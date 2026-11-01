@@ -8,6 +8,8 @@
   --green-soft: #e3f8ec;
   --red: #e5484d;
   --red-soft: #fdeceb;
+  --orange: #f08c00;
+  --orange-soft: #fff1dc;
   --gray-soft: #eef1f0;
   --gold: #f5a524;
   --radius: 16px;
@@ -45,12 +47,13 @@ p { margin: 0; }
 
 /* 今日の記録 */
 .today-goal { font-size: 18px; font-weight: 700; margin: 2px 0 14px; }
-.big-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.big-buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .big {
   border: 2px solid transparent;
   border-radius: 18px;
-  padding: 22px 8px;
-  font-size: 20px;
+  padding: 18px 2px;
+  font-size: 14px;
+  white-space: nowrap;
   font-weight: 800;
   cursor: pointer;
   font-family: inherit;
@@ -59,8 +62,10 @@ p { margin: 0; }
 .big:active { transform: scale(.97); }
 .big .emoji { display: block; font-size: 34px; line-height: 1.1; margin-bottom: 4px; }
 .big.ok { background: var(--green-soft); color: #037a35; }
+.big.half { background: var(--orange-soft); color: #9a5800; }
 .big.ng { background: var(--red-soft); color: #b42318; }
 .big.ok.selected { background: var(--green); color: #fff; border-color: var(--green); }
+.big.half.selected { background: var(--orange); color: #fff; border-color: var(--orange); }
 .big.ng.selected { background: var(--red); color: #fff; border-color: var(--red); }
 .big.dim { opacity: .45; }
 .recorded { text-align: center; margin-top: 12px; font-size: 14px; }
@@ -76,8 +81,9 @@ p { margin: 0; }
 }
 .btn:disabled { opacity: .5; }
 .btn.sub { background: var(--gray-soft); color: var(--text); }
-.small-btn { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; font-size: 14px; cursor: pointer; font-family: inherit; }
+.small-btn { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 14px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
 .small-btn.ok.selected { background: var(--green); color: #fff; border-color: var(--green); }
+.small-btn.half.selected { background: var(--orange); color: #fff; border-color: var(--orange); }
 .small-btn.ng.selected { background: var(--red); color: #fff; border-color: var(--red); }
 
 /* ランキング */
@@ -103,14 +109,16 @@ p { margin: 0; }
 .cell .m { font-size: 16px; line-height: 1; margin-top: 2px; font-weight: 800; }
 .cell.in { background: var(--gray-soft); }
 .cell.done { background: var(--green); color: #fff; }
+.cell.half { background: var(--orange); color: #fff; }
 .cell.fail { background: var(--red); color: #fff; }
 .cell.miss { background: #fff; border: 1.5px dashed #c5cdca; }
 .cell.future { background: var(--gray-soft); opacity: .5; }
 .cell.today { outline: 2px solid var(--text); outline-offset: 1px; }
 .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; font-size: 12px; color: var(--muted); }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
-.cal-summary { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; margin-bottom: 12px; }
+.cal-summary { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; margin-bottom: 12px; }
 .cal-summary b { display: block; font-size: 20px; }
+.cal-summary .muted { font-size: 12px; white-space: nowrap; }
 
 /* フォーム */
 label { display: block; font-size: 14px; font-weight: 700; margin: 14px 0 6px; }

@@ -68,23 +68,26 @@ async function run(fn) {
 // ---------- 集計 ----------
 function statsFor(userId) {
   const { challenge: ch, today } = state;
-  const log = new Map(state.checkins.filter((x) => x.userId === userId).map((x) => [x.day, x.done]));
+  const log = new Map(state.checkins.filter((x) => x.userId === userId).map((x) => [x.day, x.status]));
   const last = today < ch.endDate ? today : ch.endDate;
-  let done = 0, fail = 0, miss = 0;
+  let done = 0, half = 0, fail = 0, miss = 0;
   for (let d = ch.startDate; d <= last; d = addDays(d, 1)) {
     const v = log.get(d);
-    if (v === true) done++;
-    else if (v === false) fail++;
+    if (v === "ok") done++;
+    else if (v === "half") half++;
+    else if (v === "ng") fail++;
     else if (d < today) miss++; // 今日の未入力はまだ失敗扱いしない
   }
+  // △は0.5日ぶん。連続記録は△でも途切れない
+  const score = done + half / 2;
   let streak = 0;
   let d = last;
   if (d === today && !log.has(d)) d = addDays(d, -1);
-  while (d >= ch.startDate && log.get(d) === true) {
+  while (d >= ch.startDate && (log.get(d) === "ok" || log.get(d) === "half")) {
     streak++;
     d = addDays(d, -1);
   }
-  return { log, done, fail, miss, streak };
+  return { log, done, half, fail, miss, score, streak };
 }
 
 // ---------- 画面 ----------
@@ -179,7 +182,7 @@ function shareCard() {
 }
 
 function bindShare() {
-  const text = `「${state.challenge.title}」やろう！\n毎日「できた／できなかった」を押して競争するよ💪\n${shareUrl()}`;
+  const text = `「${state.challenge.title}」やろう！\n毎日「できた／まあまあ／できなかった」を押して競争するよ💪\n${shareUrl()}`;
   document.getElementById("copyBtn").onclick = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl());
@@ -216,18 +219,21 @@ function todayCard() {
   const yesterday = addDays(today, -1);
   const yv = log.get(yesterday);
   const sel = (want, cur) => (cur === want ? "selected" : cur === undefined ? "" : "dim");
+  const RECORDED = { ok: "記録したよ。ナイス！", half: "記録したよ。おしい！", ng: "記録したよ。明日がんばろう" };
   return `<div class="card" id="todayCard">
     <p class="muted">今日 ${md(today)}(${weekday(today)}) の目標</p>
     <p class="today-goal">${esc(me.goal)}</p>
     <div class="big-buttons">
-      <button class="big ok ${sel(true, v)}" data-day="${today}" data-done="true"><span class="emoji">🙆</span>できた！</button>
-      <button class="big ng ${sel(false, v)}" data-day="${today}" data-done="false"><span class="emoji">🙅</span>できなかった</button>
+      <button class="big ok ${sel("ok", v)}" data-day="${today}" data-status="ok"><span class="emoji">🙆</span>できた！</button>
+      <button class="big half ${sel("half", v)}" data-day="${today}" data-status="half"><span class="emoji">🤏</span>まあまあ</button>
+      <button class="big ng ${sel("ng", v)}" data-day="${today}" data-status="ng"><span class="emoji">🙅</span>できなかった</button>
     </div>
-    ${v === undefined ? "" : `<p class="recorded">${v ? "記録したよ。ナイス！" : "記録したよ。明日がんばろう"} <button class="linkbtn" data-day="${today}" data-done="null">取り消す</button></p>`}
+    ${v === undefined ? "" : `<p class="recorded">${RECORDED[v]} <button class="linkbtn" data-day="${today}" data-status="">取り消す</button></p>`}
     ${yesterday >= ch.startDate ? `<div class="yesterday"><span>昨日 ${md(yesterday)} ${yv === undefined ? "<b>未入力</b>" : ""}</span>
       <span class="pair">
-        <button class="small-btn ok ${yv === true ? "selected" : ""}" data-day="${yesterday}" data-done="true">できた</button>
-        <button class="small-btn ng ${yv === false ? "selected" : ""}" data-day="${yesterday}" data-done="false">できなかった</button>
+        <button class="small-btn ok ${yv === "ok" ? "selected" : ""}" data-day="${yesterday}" data-status="ok">○</button>
+        <button class="small-btn half ${yv === "half" ? "selected" : ""}" data-day="${yesterday}" data-status="half">△</button>
+        <button class="small-btn ng ${yv === "ng" ? "selected" : ""}" data-day="${yesterday}" data-status="ng">✕</button>
       </span></div>` : ""}
   </div>`;
 }
@@ -236,15 +242,15 @@ function rankingCard() {
   const today = state.today;
   const rows = state.members
     .map((m) => ({ m, s: statsFor(m.userId) }))
-    .sort((a, b) => b.s.done - a.s.done || b.s.streak - a.s.streak || a.s.fail - b.s.fail);
+    .sort((a, b) => b.s.score - a.s.score || b.s.streak - a.s.streak || a.s.fail - b.s.fail);
   let prev = null, rank = 0;
   return `<div class="card"><h2>ランキング</h2>
     ${rows.map(({ m, s }, i) => {
-      const key = `${s.done}-${s.streak}-${s.fail}`;
+      const key = `${s.score}-${s.streak}-${s.fail}`;
       if (key !== prev) rank = i + 1;
       prev = key;
       const t = s.log.get(today);
-      const mark = t === true ? "🙆" : t === false ? "🙅" : "<span class='muted'>…</span>";
+      const mark = { ok: "🙆", half: "🤏", ng: "🙅" }[t] ?? "<span class='muted'>…</span>";
       return `<div class="rank-row ${m.userId === viewUser ? "active" : ""}" data-user="${esc(m.userId)}">
         <span class="rank-no ${rank <= 3 ? "top" : ""}">${rank <= 3 ? ["🥇", "🥈", "🥉"][rank - 1] : rank}</span>
         ${avatar(m)}
@@ -252,11 +258,11 @@ function rankingCard() {
           <div class="rank-name">${esc(m.name)}${m.userId === state.me ? '<span class="you">あなた</span>' : ""}</div>
           <div class="rank-goal">${esc(m.goal)}</div>
         </div>
-        <div class="rank-stat"><b>${s.done}</b>日<div class="streak">🔥${s.streak}日連続</div></div>
+        <div class="rank-stat"><b>${s.score}</b>日<div class="streak">🔥${s.streak}日連続</div></div>
         <span class="today-mark" title="今日">${mark}</span>
       </div>`;
     }).join("")}
-    <p class="muted" style="margin-top:8px">右はしは今日の記録。名前をタップするとカレンダーが見られるよ。</p>
+    <p class="muted" style="margin-top:8px">△は0.5日で計算。右はしは今日の記録。名前をタップするとカレンダーが見られるよ。</p>
   </div>`;
 }
 
@@ -270,8 +276,9 @@ function calendarCard() {
   for (let d = ch.startDate; d <= ch.endDate; d = addDays(d, 1)) {
     const v = s.log.get(d);
     let cls = "in", mark = "";
-    if (v === true) { cls = "done"; mark = "✓"; }
-    else if (v === false) { cls = "fail"; mark = "✕"; }
+    if (v === "ok") { cls = "done"; mark = "○"; }
+    else if (v === "half") { cls = "half"; mark = "△"; }
+    else if (v === "ng") { cls = "fail"; mark = "✕"; }
     else if (d < today) { cls = "miss"; mark = "?"; }
     else if (d > today) cls = "future";
     const label = d === ch.startDate || d.endsWith("-01") ? md(d) : +d.slice(8);
@@ -282,12 +289,14 @@ function calendarCard() {
       <div><h2 style="margin:0">${esc(m.name)}のカレンダー</h2><div class="muted">${esc(m.goal)}</div></div></div>
     <div class="cal-summary">
       <div><b style="color:var(--green)">${s.done}</b><span class="muted">できた</span></div>
+      <div><b style="color:var(--orange)">${s.half}</b><span class="muted">まあまあ</span></div>
       <div><b style="color:var(--red)">${s.fail}</b><span class="muted">できなかった</span></div>
       <div><b style="color:var(--muted)">${s.miss}</b><span class="muted">未入力</span></div>
     </div>
     <div class="cal">${WD.map((w) => `<div class="wd">${w}</div>`).join("")}${cells.join("")}</div>
     <div class="legend">
       <span><i style="background:var(--green)"></i>できた</span>
+      <span><i style="background:var(--orange)"></i>まあまあ</span>
       <span><i style="background:var(--red)"></i>できなかった</span>
       <span><i style="border:1.5px dashed #c5cdca"></i>未入力</span>
     </div>
@@ -310,14 +319,14 @@ function renderMain() {
     ${shareCard()}
     <p style="text-align:center;margin-top:12px"><button class="linkbtn" id="editGoal">自分の目標を変更する</button></p>`;
 
-  app.querySelectorAll("[data-done]").forEach((b) => {
+  app.querySelectorAll("[data-status]").forEach((b) => {
     b.onclick = () =>
       run(async () => {
-        const done = b.dataset.done === "null" ? null : b.dataset.done === "true";
-        state = await api("checkin", { c: code, day: b.dataset.day, done });
+        const status = b.dataset.status || null;
+        state = await api("checkin", { c: code, day: b.dataset.day, status });
         viewUser = state.me;
         render();
-        if (done === true && b.dataset.day === state.today) {
+        if (status === "ok" && b.dataset.day === state.today) {
           document.getElementById("todayCard")?.classList.add("celebrate");
           toast(`ナイス！🎉 ${statsFor(state.me).streak}日連続`);
         }

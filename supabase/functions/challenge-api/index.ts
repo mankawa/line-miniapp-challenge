@@ -69,7 +69,7 @@ async function loadState(c: unknown, userId: string) {
     select user_id as "userId", display_name as "name", picture_url as "picture", goal
     from challenge.members where challenge_id = ${c} order by joined_at`;
   const checkins = await sql`
-    select user_id as "userId", to_char(day, 'YYYY-MM-DD') as day, done
+    select user_id as "userId", to_char(day, 'YYYY-MM-DD') as day, status
     from challenge.checkins where challenge_id = ${c}`;
   return { challenge: ch, members, checkins, me: userId, today: todayJST() };
 }
@@ -113,14 +113,16 @@ async function handle(body: Record<string, unknown>) {
         throw new HttpError(400, "チャレンジ期間外の日です");
       }
       if (day > today || day < addDays(today, -1)) throw new HttpError(400, "記録できるのは今日と昨日だけだよ");
-      if (body.done === null) {
+      // 古い画面がキャッシュに残っていると done: true/false で来るので、それも受ける
+      const status = "status" in body ? body.status : body.done === null ? null : body.done === true ? "ok" : "ng";
+      if (status === null) {
         await sql`delete from challenge.checkins where challenge_id = ${st.challenge.id} and user_id = ${user.userId} and day = ${day}`;
       } else {
-        const done = body.done === true;
+        if (status !== "ok" && status !== "half" && status !== "ng") throw new HttpError(400, "記録の値がおかしいです");
         await sql`
-          insert into challenge.checkins (challenge_id, user_id, day, done)
-          values (${st.challenge.id}, ${user.userId}, ${day}, ${done})
-          on conflict (challenge_id, user_id, day) do update set done = excluded.done, updated_at = now()`;
+          insert into challenge.checkins (challenge_id, user_id, day, status)
+          values (${st.challenge.id}, ${user.userId}, ${day}, ${status})
+          on conflict (challenge_id, user_id, day) do update set status = excluded.status, updated_at = now()`;
       }
       return loadState(body.c, user.userId);
     }
