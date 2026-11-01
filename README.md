@@ -31,9 +31,9 @@ LINEグループの仲間で「1ヶ月禁酒」みたいなチャレンジを競
    - **LIFF ID**（ウェブアプリ設定にある `1234567890-xxxxxxxx` 形式）
 5. 2つを設定する
    - `docs/config.js` の `LIFF_ID` に LIFF ID を入れて push
-   - DB にチャネルIDを登録：
+   - DB にチャネルIDを登録（開発用・審査用・本番用をカンマ区切り）：
      ```sql
-     insert into challenge.config (key, value) values ('line_channel_id', '<チャネルID>')
+     insert into challenge.config (key, value) values ('line_channel_id', '<開発用ID>,<審査用ID>,<本番用ID>')
      on conflict (key) do update set value = excluded.value;
      ```
 6. コンソールでミニアプリを公開する

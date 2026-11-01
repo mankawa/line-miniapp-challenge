@@ -29,17 +29,24 @@ const text = (s: unknown, max: number) => {
   return t;
 };
 
-let channelId: string | undefined;
+// ミニアプリは開発用・審査用・本番用でチャネルIDが別なので、カンマ区切りで複数持つ
+let channelIds: string[] | undefined;
 async function verifyUser(idToken: unknown) {
   if (typeof idToken !== "string" || !idToken) throw new HttpError(401, "LINEログインが必要です");
-  if (!channelId) {
+  if (!channelIds) {
     const rows = await sql`select value from challenge.config where key = 'line_channel_id'`;
     if (!rows.length) throw new HttpError(500, "line_channel_id が未設定です");
-    channelId = rows[0].value as string;
+    channelIds = (rows[0].value as string).split(",").map((s) => s.trim());
   }
+  // aud は LINE の verify で検証されるので、ここでは候補を選ぶためだけに読む
+  let aud = "";
+  try {
+    aud = JSON.parse(atob(idToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).aud;
+  } catch { /* 下の検証で弾かれる */ }
+  if (!channelIds.includes(aud)) throw new HttpError(401, "このアプリ用のログインではありません");
   const res = await fetch("https://api.line.me/oauth2/v2.1/verify", {
     method: "POST",
-    body: new URLSearchParams({ id_token: idToken, client_id: channelId }),
+    body: new URLSearchParams({ id_token: idToken, client_id: aud }),
   });
   if (!res.ok) throw new HttpError(401, "ログインの有効期限が切れました。開き直してね");
   const p = await res.json();
