@@ -182,7 +182,7 @@ function shareCard() {
 }
 
 function bindShare() {
-  const text = `「${state.challenge.title}」やろう！\n毎日「できた／まあまあ／できなかった」を押して競争するよ💪\n${shareUrl()}`;
+  const text = `「${state.challenge.title}」やろう！\n毎日「頑張れた／ちょっとだけ／挫折」を押して競争するよ💪\n${shareUrl()}`;
   document.getElementById("copyBtn").onclick = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl());
@@ -224,9 +224,9 @@ function todayCard() {
     <p class="muted">今日 ${md(today)}(${weekday(today)}) の目標</p>
     <p class="today-goal">${esc(me.goal)}</p>
     <div class="big-buttons">
-      <button class="big ok ${sel("ok", v)}" data-day="${today}" data-status="ok"><span class="emoji">🙆</span>できた！</button>
-      <button class="big half ${sel("half", v)}" data-day="${today}" data-status="half"><span class="emoji">🤏</span>まあまあ</button>
-      <button class="big ng ${sel("ng", v)}" data-day="${today}" data-status="ng"><span class="emoji">🙅</span>できなかった</button>
+      <button class="big ok ${sel("ok", v)}" data-day="${today}" data-status="ok"><span class="emoji">🙆</span>頑張れた</button>
+      <button class="big half ${sel("half", v)}" data-day="${today}" data-status="half"><span class="emoji">🤏</span>ちょっとだけ</button>
+      <button class="big ng ${sel("ng", v)}" data-day="${today}" data-status="ng"><span class="emoji">🙅</span>挫折</button>
     </div>
     ${v === undefined ? "" : `<p class="recorded">${RECORDED[v]} <button class="linkbtn" data-day="${today}" data-status="">取り消す</button></p>`}
     ${yesterday >= ch.startDate ? `<div class="yesterday"><span>昨日 ${md(yesterday)} ${yv === undefined ? "<b>未入力</b>" : ""}</span>
@@ -288,16 +288,16 @@ function calendarCard() {
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">${avatar(m)}
       <div><h2 style="margin:0">${esc(m.name)}のカレンダー</h2><div class="muted">${esc(m.goal)}</div></div></div>
     <div class="cal-summary">
-      <div><b style="color:var(--green)">${s.done}</b><span class="muted">できた</span></div>
-      <div><b style="color:var(--orange)">${s.half}</b><span class="muted">まあまあ</span></div>
-      <div><b style="color:var(--red)">${s.fail}</b><span class="muted">できなかった</span></div>
+      <div><b style="color:var(--green)">${s.done}</b><span class="muted">頑張れた</span></div>
+      <div><b style="color:var(--orange)">${s.half}</b><span class="muted">ちょっとだけ</span></div>
+      <div><b style="color:var(--red)">${s.fail}</b><span class="muted">挫折</span></div>
       <div><b style="color:var(--muted)">${s.miss}</b><span class="muted">未入力</span></div>
     </div>
     <div class="cal">${WD.map((w) => `<div class="wd">${w}</div>`).join("")}${cells.join("")}</div>
     <div class="legend">
-      <span><i style="background:var(--green)"></i>できた</span>
-      <span><i style="background:var(--orange)"></i>まあまあ</span>
-      <span><i style="background:var(--red)"></i>できなかった</span>
+      <span><i style="background:var(--green)"></i>頑張れた</span>
+      <span><i style="background:var(--orange)"></i>ちょっとだけ</span>
+      <span><i style="background:var(--red)"></i>挫折</span>
       <span><i style="border:1.5px dashed #c5cdca"></i>未入力</span>
     </div>
   </div>`;
