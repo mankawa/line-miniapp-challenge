@@ -66,7 +66,7 @@ window.MockApi = (() => {
       }
       case "checkin": {
         const ch = db.challenges[p.c];
-        if (p.day > today || p.day < addDays(today, -1)) throw new Error("記録できるのは今日と昨日だけだよ");
+        if (p.day > today ? p.status !== "rest" && p.status !== null : p.day < addDays(today, -1)) throw new Error("記録できるのは今日と昨日だけだよ");
         ch.checkins = ch.checkins.filter((x) => !(x.userId === ME.userId && x.day === p.day));
         if (p.status !== null) ch.checkins.push({ userId: ME.userId, day: p.day, status: p.status });
         save(db);

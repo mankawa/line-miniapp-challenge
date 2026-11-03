@@ -112,9 +112,12 @@ async function handle(body: Record<string, unknown>) {
       if (!isDay(day) || day < st.challenge.startDate || day > st.challenge.endDate) {
         throw new HttpError(400, "チャレンジ期間外の日です");
       }
-      if (day > today || day < addDays(today, -1)) throw new HttpError(400, "記録できるのは今日と昨日だけだよ");
       // 古い画面がキャッシュに残っていると done: true/false で来るので、それも受ける
       const status = "status" in body ? body.status : body.done === null ? null : body.done === true ? "ok" : "ng";
+      // 先の日は「予定どおりのお休み」の登録と取り消しだけできる
+      if (day > today ? status !== "rest" && status !== null : day < addDays(today, -1)) {
+        throw new HttpError(400, "記録できるのは今日と昨日だけだよ（先の日はお休みの予定だけ入れられる）");
+      }
       if (status === null) {
         await sql`delete from challenge.checkins where challenge_id = ${st.challenge.id} and user_id = ${user.userId} and day = ${day}`;
       } else {

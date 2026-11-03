@@ -120,6 +120,8 @@ p { margin: 0; }
 .cell.fail { background: var(--red); color: #fff; }
 .cell.miss { background: #fff; border: 1.5px dashed #c5cdca; }
 .cell.future { background: var(--gray-soft); opacity: .5; }
+.cell.tappable { cursor: pointer; }
+.cell.future.tappable { opacity: .75; }
 .cell.today { outline: 2px solid var(--text); outline-offset: 1px; }
 .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; font-size: 12px; color: var(--muted); }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }

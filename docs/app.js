@@ -274,6 +274,7 @@ function calendarCard() {
   const { challenge: ch, today } = state;
   const m = state.members.find((x) => x.userId === viewUser) || state.members.find((x) => x.userId === state.me);
   const s = statsFor(m.userId);
+  const mine = m.userId === state.me;
   const lead = new Date(ch.startDate + "T00:00:00Z").getUTCDay();
   const cells = [];
   for (let i = 0; i < lead; i++) cells.push(`<div class="cell"></div>`);
@@ -287,7 +288,9 @@ function calendarCard() {
     else if (d < today) { cls = "miss"; mark = "?"; }
     else if (d > today) cls = "future";
     const label = d === ch.startDate || d.endsWith("-01") ? md(d) : +d.slice(8);
-    cells.push(`<div class="cell ${cls} ${d === today ? "today" : ""}"><span>${label}</span><span class="m">${mark}</span></div>`);
+    // 自分の先の日はタップでお休みの予定を入れたり消したりできる
+    const tap = mine && d > today ? `data-day="${d}" data-status="${v === "rest" ? "" : "rest"}"` : "";
+    cells.push(`<div class="cell ${cls} ${d === today ? "today" : ""} ${tap ? "tappable" : ""}" ${tap}><span>${label}</span><span class="m">${mark}</span></div>`);
   }
   return `<div class="card">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">${avatar(m)}
@@ -307,6 +310,7 @@ function calendarCard() {
       <span><i style="background:var(--blue)"></i>予定どおりお休み</span>
       <span><i style="border:1.5px dashed #c5cdca"></i>未入力</span>
     </div>
+    ${mine && today < ch.endDate ? `<p class="muted" style="margin-top:8px">🍻 飲み会などの予定がある日は、先の日付をタップしてお休みにしておけるよ（もう一度タップで取り消し）。</p>` : ""}
   </div>`;
 }
 
@@ -333,7 +337,9 @@ function renderMain() {
         state = await api("checkin", { c: code, day: b.dataset.day, status });
         viewUser = state.me;
         render();
-        if (status === "ok" && b.dataset.day === state.today) {
+        if (b.dataset.day > state.today) {
+          toast(status ? `${md(b.dataset.day)}をお休みの予定にしたよ🍻` : `${md(b.dataset.day)}のお休みを取り消したよ`);
+        } else if (status === "ok" && b.dataset.day === state.today) {
           document.getElementById("todayCard")?.classList.add("celebrate");
           toast(`ナイス！🎉 ${statsFor(state.me).streak}日連続`);
         }
