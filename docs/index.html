@@ -2,17 +2,33 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <!-- 更新したら ?v= の数字を上げる。LINEの中のブラウザが古いファイルを使い続けないように -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>みんなでチャレンジ</title>
-  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <main id="app"><p class="loading">よみこみ中…</p></main>
   <div id="toast" class="toast" hidden></div>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
-  <script src="config.js?v=5"></script>
-  <script src="mock.js?v=5"></script>
-  <script src="app.js?v=5"></script>
+  <script>
+    // LINEの中のブラウザはこの index.html を覚えてしまうので、版番号は毎回 version.json に聞きに行く。
+    // 画面を更新したら version.json の v を上げる。
+    (async () => {
+      let v = Date.now();
+      try { v = (await (await fetch("version.json", { cache: "no-store" })).json()).v; } catch {}
+      const css = document.createElement("link");
+      css.rel = "stylesheet";
+      css.href = `style.css?v=${v}`;
+      document.head.append(css);
+      for (const src of ["config.js", "mock.js", "app.js"]) {
+        await new Promise((ok, ng) => {
+          const s = document.createElement("script");
+          s.src = `${src}?v=${v}`;
+          s.onload = ok;
+          s.onerror = ng;
+          document.body.append(s);
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
