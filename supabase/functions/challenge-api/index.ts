@@ -118,7 +118,7 @@ async function handle(body: Record<string, unknown>) {
       if (status === null) {
         await sql`delete from challenge.checkins where challenge_id = ${st.challenge.id} and user_id = ${user.userId} and day = ${day}`;
       } else {
-        if (status !== "ok" && status !== "half" && status !== "ng") throw new HttpError(400, "記録の値がおかしいです");
+        if (!["ok", "half", "ng", "rest"].includes(status as string)) throw new HttpError(400, "記録の値がおかしいです");
         await sql`
           insert into challenge.checkins (challenge_id, user_id, day, status)
           values (${st.challenge.id}, ${user.userId}, ${day}, ${status})

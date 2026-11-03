@@ -70,24 +70,26 @@ function statsFor(userId) {
   const { challenge: ch, today } = state;
   const log = new Map(state.checkins.filter((x) => x.userId === userId).map((x) => [x.day, x.status]));
   const last = today < ch.endDate ? today : ch.endDate;
-  let done = 0, half = 0, fail = 0, miss = 0;
+  let done = 0, half = 0, fail = 0, rest = 0, miss = 0;
   for (let d = ch.startDate; d <= last; d = addDays(d, 1)) {
     const v = log.get(d);
     if (v === "ok") done++;
     else if (v === "half") half++;
     else if (v === "ng") fail++;
+    else if (v === "rest") rest++;
     else if (d < today) miss++; // 今日の未入力はまだ失敗扱いしない
   }
-  // △は0.5日ぶん。連続記録は△でも途切れない
+  // △は0.5日ぶん。連続記録は△でも途切れない。予定どおりのお休みは数えずに飛ばす
   const score = done + half / 2;
   let streak = 0;
   let d = last;
   if (d === today && !log.has(d)) d = addDays(d, -1);
-  while (d >= ch.startDate && (log.get(d) === "ok" || log.get(d) === "half")) {
-    streak++;
-    d = addDays(d, -1);
+  for (; d >= ch.startDate; d = addDays(d, -1)) {
+    const v = log.get(d);
+    if (v === "ok" || v === "half") streak++;
+    else if (v !== "rest") break;
   }
-  return { log, done, half, fail, miss, score, streak };
+  return { log, done, half, fail, rest, miss, score, streak };
 }
 
 // ---------- 画面 ----------
@@ -219,7 +221,7 @@ function todayCard() {
   const yesterday = addDays(today, -1);
   const yv = log.get(yesterday);
   const sel = (want, cur) => (cur === want ? "selected" : cur === undefined ? "" : "dim");
-  const RECORDED = { ok: "記録したよ。ナイス！", half: "記録したよ。おしい！", ng: "記録したよ。明日がんばろう" };
+  const RECORDED = { ok: "記録したよ。ナイス！", half: "記録したよ。おしい！", ng: "記録したよ。明日がんばろう", rest: "予定どおりのお休み。楽しんで！" };
   return `<div class="card" id="todayCard">
     <p class="muted">今日 ${md(today)}(${weekday(today)}) の目標</p>
     <p class="today-goal">${esc(me.goal)}</p>
@@ -228,12 +230,14 @@ function todayCard() {
       <button class="big half ${sel("half", v)}" data-day="${today}" data-status="half"><span class="emoji">🤏</span>ちょっとだけ</button>
       <button class="big ng ${sel("ng", v)}" data-day="${today}" data-status="ng"><span class="emoji">🙅</span>挫折</button>
     </div>
+    <button class="rest-btn ${sel("rest", v)}" data-day="${today}" data-status="rest">🍻 もともと飲む予定だった日（お休み）</button>
     ${v === undefined ? "" : `<p class="recorded">${RECORDED[v]} <button class="linkbtn" data-day="${today}" data-status="">取り消す</button></p>`}
     ${yesterday >= ch.startDate ? `<div class="yesterday"><span>昨日 ${md(yesterday)} ${yv === undefined ? "<b>未入力</b>" : ""}</span>
       <span class="pair">
         <button class="small-btn ok ${yv === "ok" ? "selected" : ""}" data-day="${yesterday}" data-status="ok">○</button>
         <button class="small-btn half ${yv === "half" ? "selected" : ""}" data-day="${yesterday}" data-status="half">△</button>
         <button class="small-btn ng ${yv === "ng" ? "selected" : ""}" data-day="${yesterday}" data-status="ng">✕</button>
+        <button class="small-btn rest ${yv === "rest" ? "selected" : ""}" data-day="${yesterday}" data-status="rest">休</button>
       </span></div>` : ""}
   </div>`;
 }
@@ -250,7 +254,7 @@ function rankingCard() {
       if (key !== prev) rank = i + 1;
       prev = key;
       const t = s.log.get(today);
-      const mark = { ok: "🙆", half: "🤏", ng: "🙅" }[t] ?? "<span class='muted'>…</span>";
+      const mark = { ok: "🙆", half: "🤏", ng: "🙅", rest: "🍻" }[t] ?? "<span class='muted'>…</span>";
       return `<div class="rank-row ${m.userId === viewUser ? "active" : ""}" data-user="${esc(m.userId)}">
         <span class="rank-no ${rank <= 3 ? "top" : ""}">${rank <= 3 ? ["🥇", "🥈", "🥉"][rank - 1] : rank}</span>
         ${avatar(m)}
@@ -262,7 +266,7 @@ function rankingCard() {
         <span class="today-mark" title="今日">${mark}</span>
       </div>`;
     }).join("")}
-    <p class="muted" style="margin-top:8px">△は0.5日で計算。右はしは今日の記録。名前をタップするとカレンダーが見られるよ。</p>
+    <p class="muted" style="margin-top:8px">△は0.5日で計算。予定どおりのお休みは数えず、連続も途切れないよ。右はしは今日の記録。名前をタップするとカレンダーが見られるよ。</p>
   </div>`;
 }
 
@@ -279,6 +283,7 @@ function calendarCard() {
     if (v === "ok") { cls = "done"; mark = "○"; }
     else if (v === "half") { cls = "half"; mark = "△"; }
     else if (v === "ng") { cls = "fail"; mark = "✕"; }
+    else if (v === "rest") { cls = "rest"; mark = "休"; }
     else if (d < today) { cls = "miss"; mark = "?"; }
     else if (d > today) cls = "future";
     const label = d === ch.startDate || d.endsWith("-01") ? md(d) : +d.slice(8);
@@ -291,6 +296,7 @@ function calendarCard() {
       <div><b style="color:var(--green)">${s.done}</b><span class="muted">頑張れた</span></div>
       <div><b style="color:var(--orange)">${s.half}</b><span class="muted">ちょっとだけ</span></div>
       <div><b style="color:var(--red)">${s.fail}</b><span class="muted">挫折</span></div>
+      <div><b style="color:var(--blue)">${s.rest}</b><span class="muted">お休み</span></div>
       <div><b style="color:var(--muted)">${s.miss}</b><span class="muted">未入力</span></div>
     </div>
     <div class="cal">${WD.map((w) => `<div class="wd">${w}</div>`).join("")}${cells.join("")}</div>
@@ -298,6 +304,7 @@ function calendarCard() {
       <span><i style="background:var(--green)"></i>頑張れた</span>
       <span><i style="background:var(--orange)"></i>ちょっとだけ</span>
       <span><i style="background:var(--red)"></i>挫折</span>
+      <span><i style="background:var(--blue)"></i>予定どおりお休み</span>
       <span><i style="border:1.5px dashed #c5cdca"></i>未入力</span>
     </div>
   </div>`;
